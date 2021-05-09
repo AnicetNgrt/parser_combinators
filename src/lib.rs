@@ -161,7 +161,7 @@ fn space0(input: &str) -> ParseResult<Vec<char>> {
     zero_or_more(whitespace_char).parse(input)
 }
 
-fn quoted_string<'a>() -> impl Parser<'a, String> {
+fn quoted_string(input: &str) -> ParseResult<String> {
     map(
         right(
             match_literal("\""),
@@ -171,7 +171,7 @@ fn quoted_string<'a>() -> impl Parser<'a, String> {
             ),
         ),
         |chars| chars.into_iter().collect(),
-    )
+    ).parse(input)
 }
 
 #[test]
@@ -246,6 +246,6 @@ fn predicate_combinator() {
 fn quoted_string_parser() {
     assert_eq!(
         Ok(("", "Hello Joe!".to_string())),
-        quoted_string().parse("\"Hello Joe!\"")
+        quoted_string("\"Hello Joe!\"")
     );
 }
