@@ -1,0 +1,39 @@
+qint a = 0
+qbit q = (0, 10)
+qint b = |000q1q0q>
+
+
+
+~~
+The User module
+~~
+
+#username =>
+    . #string()
+    . longer_than(0)
+    . shorter_than(32)
+
+#legal_age =>
+    . #int()
+    . between(18, 100)
+
+#role =>
+    . in([:newbie, :casual, :moderator, :admin])
+
+#user =>
+    . matches((#username, #legal_age, #role))
+
+test_validation =>
+    ("Anicet", 18, :newbie) #user
+    ("", 18, :casual) #user #error(#username)
+    ("Anicet", 18, :oops) #user #error(#role)
+    ("Anicet", 10, :admin) #user #error(#legal_age)
+
+to_string() =>
+    . is #user
+    (name, age, role) = .
+    return "{name} is {age} year old and has role {role}"
+
+test_to_string() =>
+    to_string(("Anicet", 18, :newbie)) like(
+        "Anicet is 18 year old and has role newbie")

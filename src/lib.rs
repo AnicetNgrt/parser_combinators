@@ -1,3 +1,6 @@
+// TODO 
+// next: https://bodil.lol/parser-combinators/#at-last-parsing-attributes
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Element {
     name: String,
@@ -48,6 +51,13 @@ fn identifier(input: &str) -> ParseResult<String> {
 
     let next_index = matched.len();
     Ok((&input[next_index..], matched))
+}
+
+fn any_char(input: &str) -> ParseResult<char> {
+    match input.chars().next() {
+        Some(c) => Ok((&input[c.len_utf8()..], c)),
+        _ => Err(input)
+    }
 }
 
 fn pair<'a, P1, P2, R1, R2>(parser1: P1, parser2: P2) -> impl Parser<'a, (R1, R2)>
@@ -124,6 +134,46 @@ where
     }
 }
 
+fn pred<'a, P, R, F>(parser: P, predicate: F) -> impl Parser<'a, R> 
+where
+    P: Parser<'a, R>,
+    F: Fn(&R) -> bool
+{
+    move |input| {
+        if let Ok((next_input, value)) = parser.parse(input) {
+            if predicate(&value) {
+                return Ok((next_input, value));
+            }
+        }
+        Err(input)
+    }
+}
+
+fn whitespace_char(input: &str) -> ParseResult<char> {
+    pred(any_char, |c| c.is_whitespace()).parse(input)
+}
+
+fn space1(input: &str) -> ParseResult<Vec<char>> {
+    one_or_more(whitespace_char).parse(input)
+}
+
+fn space0(input: &str) -> ParseResult<Vec<char>> {
+    zero_or_more(whitespace_char).parse(input)
+}
+
+fn quoted_string<'a>() -> impl Parser<'a, String> {
+    map(
+        right(
+            match_literal("\""),
+            left(
+                zero_or_more(pred(any_char, |c| *c != '"')),
+                match_literal("\""),
+            ),
+        ),
+        |chars| chars.into_iter().collect(),
+    )
+}
+
 #[test]
 fn literal_parser() {
     let parse_joe = match_literal("Hello Joe!");
@@ -183,4 +233,19 @@ fn zero_or_more_combinator() {
     assert_eq!(Ok(("", vec![])), parser.parse(""));
     assert_eq!(Ok(("yeahAnicet", vec![])), parser.parse("yeahAnicet"));
     assert_eq!(Ok(("", vec![(), (), ()])), parser.parse("AnicetAnicetAnicet"));
+}
+
+#[test]
+fn predicate_combinator() {
+    let parser = pred(any_char, |c| *c == 'o');
+    assert_eq!(Ok(("mg", 'o')), parser.parse("omg"));
+    assert_eq!(Err("lol"), parser.parse("lol"));
+}
+
+#[test]
+fn quoted_string_parser() {
+    assert_eq!(
+        Ok(("", "Hello Joe!".to_string())),
+        quoted_string().parse("\"Hello Joe!\"")
+    );
 }
